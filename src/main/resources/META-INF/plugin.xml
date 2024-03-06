@@ -1,10 +1,11 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>org.jetbrains.plugins.template</id>
-    <name>IntelliJ Platform Plugin Template</name>
-    <vendor>JetBrains</vendor>
+    <id>cz.flexibee.plugins</id>
+    <name>Abra Flexi plugin</name>
+    <vendor>Abra</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
@@ -15,4 +16,17 @@
     <applicationListeners>
         <listener class="org.jetbrains.plugins.template.listeners.MyApplicationActivationListener" topic="com.intellij.openapi.application.ApplicationActivationListener"/>
     </applicationListeners>
+
+    <actions>
+        <action class="usage.PsiNavigationDemoAction" id="PsiNavigationDemo"
+                text="PSI Navigation Demo...">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <lang.findUsagesProvider
+                language="Simple"
+                implementationClass="usage.SimpleFindUsagesProvider"/>
+    </extensions>
 </idea-plugin>
