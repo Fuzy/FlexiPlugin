@@ -1,6 +1,7 @@
 package usage;
 // Copyright 2000-2023 fuzy s.r.o. and other contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
+import com.intellij.ide.plugins.PluginManager;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -60,7 +61,8 @@ public class PsiNavigationDemoAction extends AnAction {
                 findMethodUsages(containingMethod);
             }
         }
-        Messages.showInfoMessage(anActionEvent.getProject(), infoBuilder.toString(), "PSI Info");
+
+        PluginManager.getLogger().error(infoBuilder);
     }
 
     @Override
@@ -72,37 +74,71 @@ public class PsiNavigationDemoAction extends AnAction {
 
     public void findMethodUsages(PsiMethod method) {
         Project project = method.getProject();
-        final Query<PsiReference> search = ReferencesSearch.search(method); // psiMethod is the PsiMethod for which I wanted to find usages.
+        // psiMethod is the PsiMethod for which I wanted to find usages.
+        final Query<PsiReference> search = ReferencesSearch.search(method);
+        //TODO WSBundle#getMessageTitle(java.lang.String, java.lang.String) 58 vyskytu ale ma byt 60
+        // WSBundleable#getMessageTitle(java.lang.String, java.lang.String) vs WSBundle#getMessageTitle(java.lang.String, java.lang.String)
         Collection<PsiReference> psiReferences = search.findAll();
 
         StringBuilder sb = new StringBuilder();
         sb.append("references: ").append(psiReferences.size()).append("\n");
 
-        for (PsiReference reference : psiReferences) {
-            PsiElement resolve = reference.resolve();
-            if (resolve instanceof PsiMethod) {
-                PsiMethod method1 = (PsiMethod) resolve;
-                PsiParameterList parameters = method1.getParameterList();
+        int n = 0;
+        for (PsiReference psiReference : psiReferences) {
+            PsiElement reference = psiReference.getElement();
 
-                // Iterate over each parameter
-                for (int i = 0; i < parameters.getParametersCount(); i++) {
-                    PsiParameter parameter = parameters.getParameter(i);
-                    // Access information about the parameter
-                    String parameterName = parameter.getName();
-                    PsiType parameterType = parameter.getType();
+            if (reference instanceof PsiReferenceExpression) {
 
-                    // Handle the parameter according to your requirements
-                    sb.append("Parameter Name: " + parameterName);
-                    sb.append("Parameter Type: " + parameterType);
+                PsiReferenceExpression expression = ((PsiReferenceExpression) reference);
+
+                PsiMethodCallExpression psiMethodCallExpression = PsiTreeUtil.getParentOfType(expression, PsiMethodCallExpression.class);
+                sb.append("[" + ++n + "] ");
+
+                PsiMethod containingMethod = PsiTreeUtil.getParentOfType(expression, PsiMethod.class);
+                PsiClass containingClass = containingMethod.getContainingClass();
+                sb.append("method: " + containingMethod);
+                sb.append(", ");
+                sb.append("class: " + containingClass);
+                sb.append(", parameters: ");
+
+                PsiExpressionList psiExpressionList = PsiTreeUtil.getChildOfType(psiMethodCallExpression, PsiExpressionList.class);
+                PsiExpression[] expressions = psiExpressionList.getExpressions();
+                for (PsiExpression psiExpression : expressions) {
+                    sb.append(psiExpression.getText());
+                    sb.append(", ");
+                }
+
+
+                if (reference instanceof PsiMethod) {
+                    PsiMethod method1 = (PsiMethod) reference;
+
+                    PsiParameterList parameters = method1.getParameterList();
+
+                    // Iterate over each parameter
+                    for (int i = 0; i < parameters.getParametersCount(); i++) {
+                        PsiParameter parameter = parameters.getParameter(i);
+                        // Access information about the parameter
+                        String parameterName = parameter.getName();
+                        PsiType parameterType = parameter.getType();
+
+                        // Handle the parameter according to your requirements
+                        sb.append("Parameter Name: " + parameterName);
+                        sb.append("Parameter Type: " + parameterType);
+
+
+                    }
+
                 }
 
             }
 
-            break; // debug
+            sb.append("\n");
+            //break; // debug
         }
 
 
-        Messages.showInfoMessage(project, sb.toString() , "PSI Info");
+        PluginManager.getLogger().error(sb.toString());
+        Messages.showInfoMessage(project, sb.toString(), "PSI Info");
     }
 
 }
