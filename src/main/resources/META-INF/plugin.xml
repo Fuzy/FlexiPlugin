@@ -19,7 +19,7 @@
 
     <actions>
         <action class="usage.PsiNavigationDemoAction" id="PsiNavigationDemo"
-                text="PSI Navigation Demo...">
+                text="Check localizations">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
     </actions>
