@@ -15,7 +15,11 @@ public class L10nUsage {
 
     String gidParam;
 
+    int gidIndex;
+
     String itemNameParam;
+
+    int itemNameIndex;
 
     String debug;
 
@@ -80,12 +84,28 @@ public class L10nUsage {
         this.gidParam = gidParam;
     }
 
+    public int getGidIndex() {
+        return gidIndex;
+    }
+
+    public void setGidIndex(int gidIndex) {
+        this.gidIndex = gidIndex;
+    }
+
     public String getItemNameParam() {
         return itemNameParam;
     }
 
     public void setItemNameParam(String itemNameParam) {
         this.itemNameParam = itemNameParam;
+    }
+
+    public int getItemNameIndex() {
+        return itemNameIndex;
+    }
+
+    public void setItemNameIndex(int itemNameIndex) {
+        this.itemNameIndex = itemNameIndex;
     }
 
     public String getDebug() {

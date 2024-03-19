@@ -160,7 +160,6 @@ public class PsiNavigationDemoAction extends AnAction {
                     PsiExpression[] expressions = psiExpressionList.getExpressions();
                     for (int i = 0; i < expressions.length; i++) {
                         PsiExpression psiExpression = expressions[i];
-
                         sb.append("Class: " + psiClass + ", method: " + containingMethod + ", psiExpression: " + psiExpression + "\n");
 
                         // TODO preskocit scitani s promenoou: cz.winstrom.config.WSBundle#getMonths
@@ -170,27 +169,30 @@ public class PsiNavigationDemoAction extends AnAction {
                             continue;
                         }
 
-                        //TODO pracuje s pevnou pozici parametru, ale melo byt rozlisit dle nazvu parametru
-                        PsiJavaToken javaToken = PsiTreeUtil.getChildOfType(psiExpression, PsiJavaToken.class);
-                        if (javaToken != null) {
-                            String tokenText = javaToken.getText();
+                        //TODO pouzit pro konstantu pro nazev item - poradi parametru ve zdrojove metode
+                        // konstanta s hodnotou
+                        if (psiExpression instanceof PsiLiteralExpression) {
+                            PsiJavaToken javaToken = PsiTreeUtil.getChildOfType(psiExpression, PsiJavaToken.class);
                             if (JavaTokenType.STRING_LITERAL == javaToken.getTokenType()) {
-                                String text = normalizeName(tokenText);
-                                if (i == 0) {
-                                    usage.setItemName(text);
-                                    sb.append("Class: " + psiClass + ", method: " + containingMethod + ", psiMethodCallExpression: " + psiMethodCallExpression + ", setItemName: " + text + "\n");
-                                } else if (i == 1) {
-                                    usage.setDefaultMessage(text);
-                                }
-                            } else if (JavaTokenType.IDENTIFIER == javaToken.getTokenType()) {
-                                usage.setItemNameParam(tokenText);
-                                //TODO jmeno promenne
-                                sb.append("Class: " + psiClass + ", method: " + containingMethod + ", variable: " + tokenText + "\n");
-                            } else {
-                                //sb.append("Class: " + psiClass + ", method: " + containingMethod + ", text: " + tokenText + "\n");
-                            }
+                                String text = normalizeName(javaToken.getText());
+                                usage.setItemName(text);
 
+                                sb.append("Class: " + psiClass + ", method: " + containingMethod + ", psiMethodCallExpression: " + psiExpression + ", setItemName: " + usage.getItemName() + "\n");
+                            }
                         }
+
+                        //TODO najit promennou v seznamu parametru volajici metody a ulozit si jeji index a predat ho dalsi usage
+                        if (psiExpression instanceof PsiReferenceExpression) {
+                            PsiJavaToken javaToken = PsiTreeUtil.getChildOfType(psiExpression, PsiJavaToken.class);
+
+                            if (JavaTokenType.IDENTIFIER == javaToken.getTokenType()) {
+                                usage.setItemNameParam(javaToken.getText());
+                                //TODO jmeno promenne
+                                sb.append("Class: " + psiClass + ", method: " + containingMethod + ", variable: " + usage.getItemNameParam() + "\n");
+                            }
+                        }
+
+
                     }
 
                     usage.setDebug(sb.toString());
@@ -215,26 +217,6 @@ public class PsiNavigationDemoAction extends AnAction {
 
     // Nedokazu resit:
     // pri dereferencovani prommenne ziskavam vyraz
-
-    private String findStringLiteralRecursively(PsiExpression expression) {
-
-        PsiJavaToken javaToken = PsiTreeUtil.getChildOfType(expression, PsiJavaToken.class);
-        if (javaToken != null) {
-            if (JavaTokenType.STRING_LITERAL == javaToken.getTokenType()) {
-                return javaToken.getText();
-            } else if (JavaTokenType.IDENTIFIER == javaToken.getTokenType()) {
-                //TODO o uroven vys, pozor na pozici parametru - podle nazvu
-                PsiMethod containingMethod = PsiTreeUtil.getParentOfType(expression, PsiMethod.class);
-                PsiMethodCallExpression psiMethodCallExpression = PsiTreeUtil.getParentOfType(expression, PsiMethodCallExpression.class);
-
-            } else {
-                logger().warn("Unexpected type of token: " + javaToken.getTokenType());
-                return null;
-            }
-        }
-
-        return null;
-    }
 
     private void print(List<L10nUsage> usages) {
         StringBuilder sb = new StringBuilder();
