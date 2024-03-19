@@ -1,5 +1,7 @@
 package usage;
 
+import com.intellij.psi.PsiMethod;
+
 public class L10nUsage {
     int gid;
     String itemName;
@@ -8,6 +10,16 @@ public class L10nUsage {
     String method;
 
     String clazz;
+
+    PsiMethod psiMethod;
+
+    String gidParam;
+
+    String itemNameParam;
+
+    String debug;
+
+    L10nUsage origin;
 
     public L10nUsage() {
     }
@@ -52,8 +64,48 @@ public class L10nUsage {
         this.clazz = clazz;
     }
 
+    public PsiMethod getPsiMethod() {
+        return psiMethod;
+    }
+
+    public void setPsiMethod(PsiMethod psiMethod) {
+        this.psiMethod = psiMethod;
+    }
+
+    public String getGidParam() {
+        return gidParam;
+    }
+
+    public void setGidParam(String gidParam) {
+        this.gidParam = gidParam;
+    }
+
+    public String getItemNameParam() {
+        return itemNameParam;
+    }
+
+    public void setItemNameParam(String itemNameParam) {
+        this.itemNameParam = itemNameParam;
+    }
+
+    public String getDebug() {
+        return debug;
+    }
+
+    public void setDebug(String debug) {
+        this.debug = debug;
+    }
+
+    public L10nUsage getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(L10nUsage origin) {
+        this.origin = origin;
+    }
+
     public boolean isComplete() {
-        return gid != 0 && itemName != null; //  && defaultMessage != null
+        return itemName != null; //   gid != 0 && defaultMessage != null
     }
 
     @Override
@@ -64,6 +116,11 @@ public class L10nUsage {
                 ", defaultMessage='" + defaultMessage + '\'' +
                 ", method='" + method + '\'' +
                 ", clazz='" + clazz + '\'' +
+                ", psiMethod=" + psiMethod +
+                ", gidParam='" + gidParam + '\'' +
+                ", itemNameParam='" + itemNameParam + '\'' +
+                ", debug='" + debug + '\'' +
+                ", origin=" + origin +
                 '}';
     }
 }

@@ -8,7 +8,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Editor;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.psi.*;
 import com.intellij.psi.search.searches.ReferencesSearch;
@@ -21,6 +20,8 @@ import java.util.Collection;
 import java.util.List;
 
 public class PsiNavigationDemoAction extends AnAction {
+
+    final String debugClass = "KonVykDphWizard";
 
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {
@@ -35,7 +36,7 @@ public class PsiNavigationDemoAction extends AnAction {
             return;
         }
         int offset = editor.getCaretModel().getOffset();
-        //TODO nahradit za cz.winstrom.config.WSBundle#getTitle(int, java.lang.String, java.lang.String, boolean, java.lang.Object...)
+
         final StringBuilder infoBuilder = new StringBuilder();
         PsiElement element = psiFile.findElementAt(offset);
         infoBuilder.append("Element at caret: ").append(element).append("\n");
@@ -61,11 +62,14 @@ public class PsiNavigationDemoAction extends AnAction {
                     }
                 });
 
-                findMethodUsages(containingMethod);
+                //TODO pouzije metodu kde je kurzor, nahradit za cz.winstrom.config.WSBundle#getTitle(int, java.lang.String, java.lang.String, boolean, java.lang.Object...)
+                List<L10nUsage> usages = collectUsages(containingMethod);
+                Messages.showInfoMessage(anActionEvent.getProject(), "Count: " + usages.size(), "Usages");
+                print(usages);
             }
         }
 
-        PluginManager.getLogger().error(infoBuilder);
+        PluginManager.getLogger().warn(infoBuilder.toString());
     }
 
     @Override
@@ -82,79 +86,135 @@ public class PsiNavigationDemoAction extends AnAction {
     // dokud nemam vsechny pouziti s kompletnimi parametry
     // seznam nezpracovanych PsiReference, relevantni L10nUsage a pracovni objekt: itemName schovani za promennou
 
-    public List<L10nUsage> findMethodUsages(PsiMethod method) {
-        Project project = method.getProject();
-        // psiMethod is the PsiMethod for which I wanted to find usages.
-        final Query<PsiReference> search = ReferencesSearch.search(method);
-        Collection<PsiReference> psiReferences = search.findAll();
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("references: ").append(psiReferences.size()).append("\n");
+    public List<L10nUsage> collectUsages(PsiMethod method) {
 
         List<L10nUsage> usages = new ArrayList<>();
+        List<L10nUsage> tmp = new ArrayList<>();
 
-        for (PsiReference psiReference : psiReferences) {
-            // usages of method
-            PsiElement reference = psiReference.getElement();
+        // výchozí metoda
+        L10nUsage start = new L10nUsage();
+        start.setClazz(method.getContainingClass().getName());
+        start.setMethod(method.getName());
+        start.setPsiMethod(method);
+        tmp.add(start);
 
-            if (reference instanceof PsiReferenceExpression) {
+        int debugLimit = 200;
+        int x = 0;
 
-                L10nUsage usage = new L10nUsage();
-                usages.add(usage);
+        do {
+            x++;
+            if (x > debugLimit) {
+                break;
+            }
 
-                PsiReferenceExpression expression = ((PsiReferenceExpression) reference);
+            // konec rekurze
+            if (tmp.isEmpty()) {
+                break;
+            }
 
-                PsiMethodCallExpression psiMethodCallExpression = PsiTreeUtil.getParentOfType(expression, PsiMethodCallExpression.class);
+            L10nUsage current = tmp.remove(0);
 
-                PsiMethod containingMethod = PsiTreeUtil.getParentOfType(expression, PsiMethod.class);
-                PsiClass containingClass = containingMethod.getContainingClass();
-                if (containingClass == null || containingMethod == null) {
-                    logger().error("Class: " + containingClass + ", method: " + containingMethod);
-                    continue;
-                }
-                usage.setMethod(containingMethod.getName());
-                usage.setClazz(containingClass.getName());
-
-                PsiExpressionList psiExpressionList = PsiTreeUtil.getChildOfType(psiMethodCallExpression, PsiExpressionList.class);
-                PsiExpression[] expressions = psiExpressionList.getExpressions();
-                for (int i = 0; i < expressions.length; i++) {
-                    PsiExpression psiExpression = expressions[i];
-
-                    // TODO preskocit scitani s promenoou: cz.winstrom.config.WSBundle#getMonths
-                    // TODO viceradkovy
-                    if (psiExpression instanceof PsiPolyadicExpression) {
-                        sb.append("[PsiPolyadicExpression] Class: " + containingClass + ", method: " + containingMethod + "\n");
-                        continue;
-                    }
-
-                    PsiJavaToken javaToken = PsiTreeUtil.getChildOfType(psiExpression, PsiJavaToken.class);
-                    if (javaToken != null) {
-                        if (JavaTokenType.STRING_LITERAL == javaToken.getTokenType()) {
-                            if (i == 0) {
-                                usage.setItemName(javaToken.getText());
-                            } else if (i == 1) {
-                                usage.setDefaultMessage(javaToken.getText());
-                            }
-                        } else {
-                            sb.append("Class: " + containingClass + ", method: " + containingMethod + ", text: " + javaToken.getText());
-                        }
-
-                    }
-                }
-                
+            // neni to metoda (WSHibernateExceptionWrapper#chybaPraceSDatabazi)
+            if (current.getPsiMethod() == null) {
+                continue;
             }
 
 
-            //break; // debug
-        }
+            // psiMethod is the PsiMethod for which I wanted to find usages.
+            final Query<PsiReference> search = ReferencesSearch.search(current.getPsiMethod());
+            Collection<PsiReference> psiReferences = search.findAll();
 
 
-        PluginManager.getLogger().warn(sb.toString());
-        Messages.showInfoMessage(project, "Count: " + usages.size(), "Usages");
+            //sb.append("references of ").append(current).append(": ").append(psiReferences.size()).append("\n");
 
-        print(usages);
+            for (PsiReference psiReference : psiReferences) {
+                // usages of method
+                PsiElement reference = psiReference.getElement();
+
+                StringBuilder sb = new StringBuilder();
+
+                if (reference instanceof PsiReferenceExpression) {
+
+                    L10nUsage usage = new L10nUsage();
+                    usage.setOrigin(current);
+
+                    PsiReferenceExpression expression = ((PsiReferenceExpression) reference);
+
+                    PsiMethodCallExpression psiMethodCallExpression = PsiTreeUtil.getParentOfType(expression, PsiMethodCallExpression.class);
+
+                    PsiClass psiClass = PsiTreeUtil.getParentOfType(expression, PsiClass.class);
+                    if (psiClass == null) {
+                        logger().warn("Class: " + psiClass + " is null.");
+                        continue;
+                    }
+
+                    PsiMethod containingMethod = PsiTreeUtil.getParentOfType(expression, PsiMethod.class);
+                    if (containingMethod != null) {
+                        usage.setMethod(containingMethod.getName());
+                        usage.setPsiMethod(containingMethod);
+                    }
+                    usage.setClazz(psiClass.getName());
+
+
+                    PsiExpressionList psiExpressionList = PsiTreeUtil.getChildOfType(psiMethodCallExpression, PsiExpressionList.class);
+                    PsiExpression[] expressions = psiExpressionList.getExpressions();
+                    for (int i = 0; i < expressions.length; i++) {
+                        PsiExpression psiExpression = expressions[i];
+
+                        sb.append("Class: " + psiClass + ", method: " + containingMethod + ", psiExpression: " + psiExpression + "\n");
+
+                        // TODO preskocit scitani s promenoou: cz.winstrom.config.WSBundle#getMonths
+                        // TODO viceradkovy
+                        if (psiExpression instanceof PsiPolyadicExpression) {
+                            sb.append("[PsiPolyadicExpression] Class: " + psiClass + ", method: " + containingMethod + "\n");
+                            continue;
+                        }
+
+                        //TODO pracuje s pevnou pozici parametru, ale melo byt rozlisit dle nazvu parametru
+                        PsiJavaToken javaToken = PsiTreeUtil.getChildOfType(psiExpression, PsiJavaToken.class);
+                        if (javaToken != null) {
+                            String tokenText = javaToken.getText();
+                            if (JavaTokenType.STRING_LITERAL == javaToken.getTokenType()) {
+                                String text = normalizeName(tokenText);
+                                if (i == 0) {
+                                    usage.setItemName(text);
+                                    sb.append("Class: " + psiClass + ", method: " + containingMethod + ", psiMethodCallExpression: " + psiMethodCallExpression + ", setItemName: " + text + "\n");
+                                } else if (i == 1) {
+                                    usage.setDefaultMessage(text);
+                                }
+                            } else if (JavaTokenType.IDENTIFIER == javaToken.getTokenType()) {
+                                usage.setItemNameParam(tokenText);
+                                //TODO jmeno promenne
+                                sb.append("Class: " + psiClass + ", method: " + containingMethod + ", variable: " + tokenText + "\n");
+                            } else {
+                                //sb.append("Class: " + psiClass + ", method: " + containingMethod + ", text: " + tokenText + "\n");
+                            }
+
+                        }
+                    }
+
+                    usage.setDebug(sb.toString());
+                    if (usage.isComplete()) {
+                        usage.setPsiMethod(null);
+                        usages.add(usage);
+                    } else {
+                        tmp.add(usage);
+                    }
+
+                }
+
+            }
+
+        } while (!tmp.isEmpty());
+
         return usages;
     }
+
+    // Dokazu resit:
+    // promenna jako parametr metody
+
+    // Nedokazu resit:
+    // pri dereferencovani prommenne ziskavam vyraz
 
     private String findStringLiteralRecursively(PsiExpression expression) {
 
@@ -168,7 +228,7 @@ public class PsiNavigationDemoAction extends AnAction {
                 PsiMethodCallExpression psiMethodCallExpression = PsiTreeUtil.getParentOfType(expression, PsiMethodCallExpression.class);
 
             } else {
-                logger().error("Unexpected type of token: " + javaToken.getTokenType());
+                logger().warn("Unexpected type of token: " + javaToken.getTokenType());
                 return null;
             }
         }
@@ -179,11 +239,29 @@ public class PsiNavigationDemoAction extends AnAction {
     private void print(List<L10nUsage> usages) {
         StringBuilder sb = new StringBuilder();
         for (L10nUsage usage : usages) {
-            sb.append(usage);
-            sb.append("\n");
+            if (debugClass.equals(usage.clazz)) {
+                sb.append(usage);
+                sb.append("\n");
+            }
         }
 
         logger().warn(sb.toString());
+    }
+
+    private String normalizeName(String name) {
+        if (name == null) {
+            return null;
+        }
+
+        if (name.charAt(0) == '"') {
+            name = name.substring(1);
+        }
+
+        if (name.charAt(name.length() - 1) == '"') {
+            name = name.substring(0, name.length() - 1);
+        }
+
+        return name;
     }
 
     private Logger logger() {
