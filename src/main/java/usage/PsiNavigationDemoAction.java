@@ -1,15 +1,18 @@
 package usage;
 // Copyright 2000-2023 fuzy s.r.o. and other contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
-import com.intellij.ide.plugins.PluginManager;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
+import com.intellij.psi.search.FilenameIndex;
+import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.Query;
@@ -18,8 +21,11 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PsiNavigationDemoAction extends AnAction {
+
+    private static final Logger LOG = Logger.getInstance(PsiNavigationDemoAction.class);
 
     final String debugClass = "KonVykDphWizard";
 
@@ -63,13 +69,19 @@ public class PsiNavigationDemoAction extends AnAction {
                 });
 
                 //TODO pouzije metodu kde je kurzor, nahradit za cz.winstrom.config.WSBundle#getTitle(int, java.lang.String, java.lang.String, boolean, java.lang.Object...)
-                List<L10nUsage> usages = collectUsages(containingMethod);
-                Messages.showInfoMessage(anActionEvent.getProject(), "Count: " + usages.size(), "Usages");
+
+                Project project = anActionEvent.getProject();
+                Collection<VirtualFile> files = FilenameIndex.getAllFilesByExt(project, "java", GlobalSearchScope.allScope(project));
+                LOG.warn("Searching: " + files.size() + " files.");
+
+                List<L10nUsage> usages = collectUsages(containingMethod, files);
+                // cz.winstrom.config.WSConfig#getMessageTitle(java.lang.String, java.lang.String): 714
+                Messages.showInfoMessage(project, "Count: " + usages.size(), "Usages");
                 print(usages);
             }
         }
 
-        PluginManager.getLogger().warn(infoBuilder.toString());
+        LOG.warn(infoBuilder.toString());
     }
 
     @Override
@@ -86,7 +98,7 @@ public class PsiNavigationDemoAction extends AnAction {
     // dokud nemam vsechny pouziti s kompletnimi parametry
     // seznam nezpracovanych PsiReference, relevantni L10nUsage a pracovni objekt: itemName schovani za promennou
 
-    public List<L10nUsage> collectUsages(PsiMethod method) {
+    public List<L10nUsage> collectUsages(PsiMethod method, Collection<VirtualFile> files) {
 
         List<L10nUsage> usages = new ArrayList<>();
         List<L10nUsage> tmp = new ArrayList<>();
@@ -97,6 +109,26 @@ public class PsiNavigationDemoAction extends AnAction {
         start.setMethod(method.getName());
         start.setPsiMethod(method);
         tmp.add(start);
+        //TODO method parameters
+        PsiParameter[] parameters = method.getParameterList().getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            PsiParameter parameter = parameters[i];
+
+            String canonicalText = parameter.getType().getCanonicalText();
+            if ("int".equals(canonicalText)) {
+                start.setGidParaIdx(i);
+            } else if ("java.lang.String".equals(canonicalText)) {
+                if (parameter.getName().contains("item")) {
+                    start.setItemParaIdx(i);
+                } else if (parameter.getName().contains("default")) {
+                    start.setDefaultParaIdx(i);
+                }
+            }
+
+            // logger().error("Type: " + canonicalText + " name: " + parameter.getName() + " [" + i + "]" + "\n ");
+        }
+
+        LOG.warn("start: " + start + "\n");
 
         int debugLimit = 200;
         int x = 0;
@@ -119,9 +151,10 @@ public class PsiNavigationDemoAction extends AnAction {
                 continue;
             }
 
+            Project project = method.getProject();
 
             // psiMethod is the PsiMethod for which I wanted to find usages.
-            final Query<PsiReference> search = ReferencesSearch.search(current.getPsiMethod());
+            final Query<PsiReference> search = ReferencesSearch.search(current.getPsiMethod(), GlobalSearchScope.filesScope(project, files));
             Collection<PsiReference> psiReferences = search.findAll();
 
 
@@ -144,7 +177,7 @@ public class PsiNavigationDemoAction extends AnAction {
 
                     PsiClass psiClass = PsiTreeUtil.getParentOfType(expression, PsiClass.class);
                     if (psiClass == null) {
-                        logger().warn("Class: " + psiClass + " is null.");
+                        LOG.warn("Class: " + psiClass + " is null.");
                         continue;
                     }
 
@@ -195,7 +228,7 @@ public class PsiNavigationDemoAction extends AnAction {
 
                     }
 
-                    usage.setDebug(sb.toString());
+                    //usage.setDebug(sb.toString());
                     if (usage.isComplete()) {
                         usage.setPsiMethod(null);
                         usages.add(usage);
@@ -219,15 +252,16 @@ public class PsiNavigationDemoAction extends AnAction {
     // pri dereferencovani prommenne ziskavam vyraz
 
     private void print(List<L10nUsage> usages) {
-        StringBuilder sb = new StringBuilder();
-        for (L10nUsage usage : usages) {
-            if (debugClass.equals(usage.clazz)) {
-                sb.append(usage);
-                sb.append("\n");
-            }
+
+        List<L10nUsage> collect = usages.stream().filter(u -> debugClass.equals(u.clazz)).collect(Collectors.toList());
+        StringBuilder sb = new StringBuilder("Found [" + collect.size() + "]: ");
+
+        for (L10nUsage usage : collect) {
+            sb.append(usage);
+            sb.append("\n");
         }
 
-        logger().warn(sb.toString());
+        LOG.warn(sb.toString());
     }
 
     private String normalizeName(String name) {
@@ -244,10 +278,6 @@ public class PsiNavigationDemoAction extends AnAction {
         }
 
         return name;
-    }
-
-    private Logger logger() {
-        return PluginManager.getLogger();
     }
 
 }

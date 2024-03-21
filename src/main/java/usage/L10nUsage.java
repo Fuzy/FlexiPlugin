@@ -15,11 +15,19 @@ public class L10nUsage {
 
     String gidParam;
 
-    int gidIndex;
+    int gidParaIdx;
+
+    int gitCallIdx;
 
     String itemNameParam;
 
-    int itemNameIndex;
+    int itemParaIdx;
+
+    int itemCallIdx;
+
+    int defaultParaIdx;
+
+    int defaultCallIdx;
 
     String debug;
 
@@ -84,12 +92,12 @@ public class L10nUsage {
         this.gidParam = gidParam;
     }
 
-    public int getGidIndex() {
-        return gidIndex;
+    public int getGidParaIdx() {
+        return gidParaIdx;
     }
 
-    public void setGidIndex(int gidIndex) {
-        this.gidIndex = gidIndex;
+    public void setGidParaIdx(int gidParaIdx) {
+        this.gidParaIdx = gidParaIdx;
     }
 
     public String getItemNameParam() {
@@ -100,12 +108,44 @@ public class L10nUsage {
         this.itemNameParam = itemNameParam;
     }
 
-    public int getItemNameIndex() {
-        return itemNameIndex;
+    public int getItemParaIdx() {
+        return itemParaIdx;
     }
 
-    public void setItemNameIndex(int itemNameIndex) {
-        this.itemNameIndex = itemNameIndex;
+    public void setItemParaIdx(int itemParaIdx) {
+        this.itemParaIdx = itemParaIdx;
+    }
+
+    public int getGitCallIdx() {
+        return gitCallIdx;
+    }
+
+    public void setGitCallIdx(int gitCallIdx) {
+        this.gitCallIdx = gitCallIdx;
+    }
+
+    public int getItemCallIdx() {
+        return itemCallIdx;
+    }
+
+    public void setItemCallIdx(int itemCallIdx) {
+        this.itemCallIdx = itemCallIdx;
+    }
+
+    public int getDefaultParaIdx() {
+        return defaultParaIdx;
+    }
+
+    public void setDefaultParaIdx(int defaultParaIdx) {
+        this.defaultParaIdx = defaultParaIdx;
+    }
+
+    public int getDefaultCallIdx() {
+        return defaultCallIdx;
+    }
+
+    public void setDefaultCallIdx(int defaultCallIdx) {
+        this.defaultCallIdx = defaultCallIdx;
     }
 
     public String getDebug() {
@@ -136,10 +176,12 @@ public class L10nUsage {
                 ", defaultMessage='" + defaultMessage + '\'' +
                 ", method='" + method + '\'' +
                 ", clazz='" + clazz + '\'' +
-                ", psiMethod=" + psiMethod +
-                ", gidParam='" + gidParam + '\'' +
-                ", itemNameParam='" + itemNameParam + '\'' +
-                ", debug='" + debug + '\'' +
+                ", gidParaIdx=" + gidParaIdx +
+                ", gitCallIdx=" + gitCallIdx +
+                ", itemParaIdx=" + itemParaIdx +
+                ", itemCallIdx=" + itemCallIdx +
+                ", defaultParaIdx=" + defaultParaIdx +
+                ", defaultCallIdx=" + defaultCallIdx +
                 ", origin=" + origin +
                 '}';
     }
