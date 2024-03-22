@@ -17,7 +17,7 @@ public class L10nUsage {
 
     int gidParaIdx;
 
-    int gitCallIdx;
+    int gidCallIdx;
 
     String itemNameParam;
 
@@ -34,6 +34,13 @@ public class L10nUsage {
     L10nUsage origin;
 
     public L10nUsage() {
+        gid = -1;
+        gidParaIdx = -1;
+        gidCallIdx = -1;
+        itemParaIdx = -1;
+        itemCallIdx = -1;
+        defaultParaIdx = -1;
+        defaultCallIdx = -1;
     }
 
     public int getGid() {
@@ -116,12 +123,12 @@ public class L10nUsage {
         this.itemParaIdx = itemParaIdx;
     }
 
-    public int getGitCallIdx() {
-        return gitCallIdx;
+    public int getGidCallIdx() {
+        return gidCallIdx;
     }
 
-    public void setGitCallIdx(int gitCallIdx) {
-        this.gitCallIdx = gitCallIdx;
+    public void setGidCallIdx(int gidCallIdx) {
+        this.gidCallIdx = gidCallIdx;
     }
 
     public int getItemCallIdx() {
@@ -165,7 +172,11 @@ public class L10nUsage {
     }
 
     public boolean isComplete() {
-        return itemName != null; //   gid != 0 && defaultMessage != null
+        return itemName != null && gid != -1;
+    }
+
+    public boolean isNotUsefull() {
+        return gidParaIdx == -1 && gidCallIdx == -1 && itemParaIdx == -1 && itemCallIdx == -1;
     }
 
     @Override
@@ -177,7 +188,7 @@ public class L10nUsage {
                 ", method='" + method + '\'' +
                 ", clazz='" + clazz + '\'' +
                 ", gidParaIdx=" + gidParaIdx +
-                ", gitCallIdx=" + gitCallIdx +
+                ", gitCallIdx=" + gidCallIdx +
                 ", itemParaIdx=" + itemParaIdx +
                 ", itemCallIdx=" + itemCallIdx +
                 ", defaultParaIdx=" + defaultParaIdx +
