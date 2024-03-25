@@ -1,6 +1,7 @@
 package usage;
 // Copyright 2000-2023 fuzy s.r.o. and other contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
+import bundle.XmlLoader;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -11,6 +12,7 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
 import com.intellij.psi.search.FilenameIndex;
@@ -20,6 +22,8 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.Query;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -100,6 +104,19 @@ public class PsiNavigationDemoAction extends AnAction {
                 // cz.winstrom.config.WSConfig#getMessageTitle(java.lang.String, java.lang.String): 714
                 Messages.showInfoMessage(project, "Count: " + usages.size(), "Usages");
                 print(usages);
+
+                VirtualFile basePath = LocalFileSystem.getInstance().findFileByPath(project.getBasePath() + "/common/etc/resources/lang/cs/lang.ucto.cs.xml");
+                LOG.warn(basePath.getPath());
+
+                try {
+                    InputStream[] streams = new InputStream[]{basePath.getInputStream()};
+                    Map<String, String> msgs = XmlLoader.load(streams, "msg");
+                    LOG.warn("msgs: " + msgs.size());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+
             }
         }
 
