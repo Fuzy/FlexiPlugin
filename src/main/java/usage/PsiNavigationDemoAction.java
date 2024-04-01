@@ -11,7 +11,6 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
@@ -24,12 +23,16 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -39,9 +42,8 @@ public class PsiNavigationDemoAction extends AnAction {
 
     private static final Logger LOG = Logger.getInstance(PsiNavigationDemoAction.class);
 
-    final static String[] MODULES = new String[]{"winstrom-core", "winstrom-ucto"};
-    // public static final int GID_BUTTONS = 2;
-    final static int[] GIDS = new int[]{2};
+    final static String[] MODULES = new String[]{"winstrom-core", "winstrom-ucto", "winstrom-mzdy", "winstrom-majetek"};
+    final static String L10N_PATH = "/common/etc/resources/lang/cs"; //TODO podpora pro vice jazyku
 
     final String debugClass = "KonVykDphWizard";
 
@@ -90,37 +92,88 @@ public class PsiNavigationDemoAction extends AnAction {
 
                 ModuleManager moduleManager = ModuleManager.getInstance(project);
                 Module[] allModules = moduleManager.getModules();
+                LOG.warn("All modules: " + Arrays.toString(allModules));
                 List<Module> modules = Arrays.stream(allModules).filter(m -> Arrays.asList(MODULES).contains(m.getName())).toList();
                 LOG.warn("Modules: " + modules);
 
                 Function<Module, Stream<? extends VirtualFile>> javaFilesForModule = m -> FilenameIndex.getAllFilesByExt(project, "java", GlobalSearchScope.moduleScope(m)).stream();
                 Collection<VirtualFile> files = modules.stream().flatMap(javaFilesForModule).toList();
-                LOG.warn("Searching: " + files.size() + " files.");
+                LOG.warn("Searching: " + files.size() + " Java files.");
 
                 Map<String, Integer> constants = bundleConstants(project);
                 LOG.warn("WSBundleConstants: " + constants);
 
                 List<L10nUsage> usages = collectUsages(containingMethod, files, constants);
-                // cz.winstrom.config.WSConfig#getMessageTitle(java.lang.String, java.lang.String): 714
-                Messages.showInfoMessage(project, "Count: " + usages.size(), "Usages");
-                print(usages);
-
-                VirtualFile basePath = LocalFileSystem.getInstance().findFileByPath(project.getBasePath() + "/common/etc/resources/lang/cs/lang.ucto.cs.xml");
-                LOG.warn(basePath.getPath());
+                //print(usages);
 
                 try {
-                    InputStream[] streams = new InputStream[]{basePath.getInputStream()};
-                    Map<String, String> msgs = XmlLoader.load(streams, "msg");
-                    LOG.warn("msgs: " + msgs.size());
+                    Map<String, String> msgs = XmlLoader.load(loadResourceFiles(project).toArray(new InputStream[0]), Constants.MSG);
+                    LOG.warn("Messages found in resource files: " + msgs.size()); // msgs: 3148
+
+                    Map<String, String> lbs = XmlLoader.load(loadResourceFiles(project).toArray(new InputStream[0]), Constants.LB);
+                    LOG.warn("Labels found in resource files: " + lbs.size()); // lb: 2210
+
+                    checkConsistencyOfMsgs(usages, msgs, Constants.MSG, Constants.GID_MESSAGES);
+                    checkConsistencyOfMsgs(usages, lbs, Constants.LB, Constants.GID_LABELS);
+
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
 
-
             }
         }
 
-        LOG.warn(infoBuilder.toString());
+        //LOG.warn(infoBuilder.toString());
+    }
+
+    @NotNull
+    private List<InputStream> loadResourceFiles(Project project) throws IOException {
+        String dir = project.getBasePath() + L10N_PATH;
+        Set<Path> resources = listFilesUsingFileWalk(dir, 10);
+        LOG.warn("Resources: " + Arrays.toString(resources.toArray()));
+
+        List<InputStream> streams = new ArrayList<>();
+        for (Path path : resources) {
+            VirtualFile vf = LocalFileSystem.getInstance().findFileByPath(path.toString());
+            if (vf != null) {
+                streams.add(vf.getInputStream());
+            } else {
+                LOG.warn("Resource " + path + " file not found.");
+            }
+        }
+        return streams;
+    }
+
+    private void checkConsistencyOfMsgs(List<L10nUsage> usages, Map<String, String> msgs, String msg, int gid) {
+
+        List<L10nUsage> collect = usages.stream().filter(u -> gid == u.getGid()).toList();
+        LOG.warn("Usages of " + msg + " in Java code: " + collect.size());
+
+        int fails = 0;
+        for (L10nUsage usage : collect) {
+            if (!msgs.containsKey(usage.getItemName())) {
+                fails++;
+
+                if (usage.getItemName() == null || usage.getItemName().isEmpty() || usage.getItemName().isBlank()) {
+                    LOG.warn("Usage with no itemName: " + usage);
+                }
+
+                // pouzite v Jave se nachazi v prislusne skupine v XML
+                LOG.warn("Resource file missing " + msg + ": " + usage.getItemName() + " " + usage);
+            }
+        }
+
+        // msg 52 errors on develop
+        LOG.warn("Errors of " + msg + ": " + fails);
+    }
+
+
+    public Set<Path> listFilesUsingFileWalk(String dir, int depth) throws IOException {
+        try (Stream<Path> stream = Files.walk(Paths.get(dir), depth)) {
+            return stream
+                    .filter(file -> !Files.isDirectory(file))
+                    .collect(Collectors.toSet());
+        }
     }
 
     @Override
@@ -266,7 +319,8 @@ public class PsiNavigationDemoAction extends AnAction {
 
                     }
 
-                    boolean isGidAllowed = usage.getGid() == 4;
+                    //TODO debug filtr na skupinu lokalizace: usage.getGid() == 4;
+                    boolean isGidAllowed = true;
 
 
                     //usage.setDebug(sb.toString());

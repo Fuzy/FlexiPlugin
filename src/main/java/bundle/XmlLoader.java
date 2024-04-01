@@ -39,14 +39,21 @@ public class XmlLoader {
                         String name = element.getAttribute("name");
                         String title = element.getElementsByTagName("titl").item(0).getTextContent();
 
+                        //TODO ma resit test ve Flexi
                         if (map.containsKey(name)) {
-                            LOG.warn("Already contains: " + name);
+                            // LOG.warn("Already contains: " + name);
                         }
                         map.put(name, title);
                     }
                 }
             } catch (ParserConfigurationException | SAXException | IOException e) {
                 throw new RuntimeException(e);
+            }
+
+            try {
+                is.close();
+            } catch (IOException e) {
+                LOG.error(e);
             }
         }
 
