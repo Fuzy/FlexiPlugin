@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +43,7 @@ public class PsiNavigationDemoAction extends AnAction {
 
     private static final Logger LOG = Logger.getInstance(PsiNavigationDemoAction.class);
 
-    final static String[] MODULES = new String[]{"winstrom-core", "winstrom-ucto", "winstrom-mzdy", "winstrom-majetek"};
+    final static String[] MODULES = new String[]{"winstrom-core", "winstrom-core-uiswing", "winstrom-ucto", "winstrom-mzdy", "winstrom-majetek"};
     final static String L10N_PATH = "/common/etc/resources/lang/cs"; //TODO podpora pro vice jazyku
 
     final String debugClass = "KonVykDphWizard";
@@ -146,25 +147,28 @@ public class PsiNavigationDemoAction extends AnAction {
 
     private void checkConsistencyOfMsgs(List<L10nUsage> usages, Map<String, String> msgs, String msg, int gid) {
 
+        List<L10nUsage> fails = new ArrayList<>();
+
         List<L10nUsage> collect = usages.stream().filter(u -> gid == u.getGid()).toList();
         LOG.warn("Usages of " + msg + " in Java code: " + collect.size());
 
-        int fails = 0;
         for (L10nUsage usage : collect) {
             if (!msgs.containsKey(usage.getItemName())) {
-                fails++;
-
-                if (usage.getItemName() == null || usage.getItemName().isEmpty() || usage.getItemName().isBlank()) {
-                    LOG.warn("Usage with no itemName: " + usage);
-                }
-
-                // pouzite v Jave se nachazi v prislusne skupine v XML
-                LOG.warn("Resource file missing " + msg + ": " + usage.getItemName() + " " + usage);
+                fails.add(usage);
             }
         }
 
         // msg 52 errors on develop
-        LOG.warn("Errors of " + msg + ": " + fails);
+        LOG.warn("Errors of " + msg + ": " + fails.size());
+        for (L10nUsage usage : fails.stream().sorted(Comparator.comparing(L10nUsage::getItemName)).toList()) {
+            if (usage.getItemName() == null || usage.getItemName().isEmpty() || usage.getItemName().isBlank()) {
+                LOG.warn("Usage with no itemName: " + usage);
+            }
+
+            // pouzite v Jave se nachazi v prislusne skupine v XML
+            LOG.warn("Resource file missing " + msg + ": " + usage.getItemName() + " " + usage);
+        }
+
     }
 
 
