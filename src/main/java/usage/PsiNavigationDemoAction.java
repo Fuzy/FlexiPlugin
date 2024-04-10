@@ -2,6 +2,9 @@ package usage;
 // Copyright 2000-2023 fuzy s.r.o. and other contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
 
 import bundle.XmlLoader;
+import com.intellij.execution.filters.TextConsoleBuilderFactory;
+import com.intellij.execution.ui.ConsoleView;
+import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -11,11 +14,14 @@ import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.psi.*;
 import com.intellij.psi.search.FilenameIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.ui.content.Content;
 import com.intellij.util.Query;
 import org.jetbrains.annotations.NotNull;
 
@@ -77,6 +83,12 @@ public class PsiNavigationDemoAction extends AnAction {
                 return;
             }
 
+            ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("FlexiPlugin");
+            ConsoleView consoleView = TextConsoleBuilderFactory.getInstance().createBuilder(project).getConsole();
+            Content content = toolWindow.getContentManager().getFactory().createContent(consoleView.getComponent(), "Output", false);
+            toolWindow.getContentManager().addContent(content);
+
+
             PsiMethod containingMethod = collect.get(0);
             if (containingMethod != null) {
                 LOG.warn("Starting method: " + containingMethod.getName() + " of class " + bundleClass.getName());
@@ -104,8 +116,11 @@ public class PsiNavigationDemoAction extends AnAction {
                     Map<String, String> lbs = XmlLoader.load(loadResourceFiles(project).toArray(new InputStream[0]), Constants.LB);
                     LOG.warn("Labels found in resource files: " + lbs.size()); // lb: 2210
 
-                    checkConsistencyOfMsgs(usages, msgs, Constants.MSG, Constants.GID_MESSAGES);
-                    checkConsistencyOfMsgs(usages, lbs, Constants.LB, Constants.GID_LABELS);
+                    String errorsMsgs = checkConsistencyOfMsgs(usages, msgs, Constants.MSG, Constants.GID_MESSAGES);
+                    String errorLbs = checkConsistencyOfMsgs(usages, lbs, Constants.LB, Constants.GID_LABELS);
+
+                    consoleView.print(errorsMsgs, ConsoleViewContentType.NORMAL_OUTPUT);
+                    consoleView.print(errorLbs, ConsoleViewContentType.NORMAL_OUTPUT);
 
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -135,12 +150,13 @@ public class PsiNavigationDemoAction extends AnAction {
         return streams;
     }
 
-    private void checkConsistencyOfMsgs(List<L10nUsage> usages, Map<String, String> msgs, String msg, int gid) {
+    private String checkConsistencyOfMsgs(List<L10nUsage> usages, Map<String, String> msgs, String msg, int gid) {
+        StringBuilder sb = new StringBuilder();
 
         List<L10nUsage> fails = new ArrayList<>();
 
         List<L10nUsage> collect = usages.stream().filter(u -> gid == u.getGid()).toList();
-        LOG.warn("Usages of " + msg + " in Java code: " + collect.size());
+        sb.append("Usages of " + msg + " in Java code: " + collect.size() + "\n");
 
         for (L10nUsage usage : collect) {
             if (!msgs.containsKey(usage.getItemName())) {
@@ -149,16 +165,17 @@ public class PsiNavigationDemoAction extends AnAction {
         }
 
         // msg 52 errors on develop
-        LOG.warn("Errors of " + msg + ": " + fails.size());
+        sb.append("Errors of " + msg + ": " + fails.size() + "\n");
         for (L10nUsage usage : fails.stream().sorted(Comparator.comparing(L10nUsage::getItemName)).toList()) {
             if (usage.getItemName() == null || usage.getItemName().isEmpty() || usage.getItemName().isBlank()) {
-                LOG.warn("Usage with no itemName: " + usage);
+                sb.append("Usage with no itemName: " + usage + "\n");
             }
 
             // pouzite v Jave se nachazi v prislusne skupine v XML
-            LOG.warn("Resource file missing " + msg + ": " + usage.getItemName() + " " + usage);
+            sb.append("Resource file missing " + msg + ": " + usage.getItemName() + " " + usage + "\n");
         }
 
+        return sb.toString();
     }
 
 

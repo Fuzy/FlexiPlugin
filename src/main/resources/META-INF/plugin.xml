@@ -10,7 +10,7 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.fuzy.flexiplugin.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <toolWindow factoryClass="com.github.fuzy.flexiplugin.toolWindow.MyToolWindowFactory" id="FlexiPlugin"/>
     </extensions>
 
     <applicationListeners>
