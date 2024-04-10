@@ -37,12 +37,12 @@ public class XmlLoader {
                     if (node.getNodeType() == Node.ELEMENT_NODE) {
                         Element element = (Element) node;
                         String name = element.getAttribute("name");
-                        String title = element.getElementsByTagName("titl").item(0).getTextContent();
-
-                        //TODO ma resit test ve Flexi
-                        if (map.containsKey(name)) {
-                            // LOG.warn("Already contains: " + name);
+                        Node titl = element.getElementsByTagName("titl").item(0);
+                        if (titl == null) {
+                            LOG.error("Element with key " + name + " has no titl");
+                            continue;
                         }
+                        String title = titl.getTextContent();
                         map.put(name, title);
                     }
                 }

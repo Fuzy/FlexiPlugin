@@ -48,7 +48,11 @@ public class PsiNavigationDemoAction extends AnAction {
     private static final Logger LOG = Logger.getInstance(PsiNavigationDemoAction.class);
 
     final static String[] MODULES = new String[]{"winstrom-core", "winstrom-core-uiswing", "winstrom-ucto", "winstrom-mzdy", "winstrom-majetek"};
-    final static String L10N_PATH = "/common/etc/resources/lang/cs"; //TODO podpora pro vice jazyku
+    final static String L10N_PATH = "/common/etc/resources/lang/";
+
+    private static Stream<String> languages() {
+        return Stream.of("cs", "en", "sk", "de");
+    }
 
     final String debugClass = "KonVykDphWizard";
 
@@ -109,32 +113,34 @@ public class PsiNavigationDemoAction extends AnAction {
                 List<L10nUsage> usages = collectUsages(containingMethod, files, constants);
                 //print(usages);
 
-                try {
-                    Map<String, String> msgs = XmlLoader.load(loadResourceFiles(project).toArray(new InputStream[0]), Constants.MSG);
-                    LOG.warn("Messages found in resource files: " + msgs.size()); // msgs: 3148
+                languages().forEach(l -> {
+                    try {
+                        consoleView.print("Language: " + l + " \n", ConsoleViewContentType.NORMAL_OUTPUT);
 
-                    Map<String, String> lbs = XmlLoader.load(loadResourceFiles(project).toArray(new InputStream[0]), Constants.LB);
-                    LOG.warn("Labels found in resource files: " + lbs.size()); // lb: 2210
+                        Map<String, String> msgs = XmlLoader.load(loadResourceFiles(project, l).toArray(new InputStream[0]), Constants.MSG);
+                        LOG.warn("Messages found in resource files: " + msgs.size()); // msgs: 3148
 
-                    String errorsMsgs = checkConsistencyOfMsgs(usages, msgs, Constants.MSG, Constants.GID_MESSAGES);
-                    String errorLbs = checkConsistencyOfMsgs(usages, lbs, Constants.LB, Constants.GID_LABELS);
+                        Map<String, String> lbs = XmlLoader.load(loadResourceFiles(project, l).toArray(new InputStream[0]), Constants.LB);
+                        LOG.warn("Labels found in resource files: " + lbs.size()); // lb: 2210
 
-                    consoleView.print(errorsMsgs, ConsoleViewContentType.NORMAL_OUTPUT);
-                    consoleView.print(errorLbs, ConsoleViewContentType.NORMAL_OUTPUT);
+                        String errorsMsgs = checkConsistencyOfMsgs(usages, msgs, Constants.MSG, Constants.GID_MESSAGES);
+                        String errorLbs = checkConsistencyOfMsgs(usages, lbs, Constants.LB, Constants.GID_LABELS);
 
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                        consoleView.print(errorsMsgs, ConsoleViewContentType.NORMAL_OUTPUT);
+                        consoleView.print(errorLbs, ConsoleViewContentType.NORMAL_OUTPUT);
 
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                });
             }
         }
-
-        //LOG.warn(infoBuilder.toString());
     }
 
     @NotNull
-    private List<InputStream> loadResourceFiles(Project project) throws IOException {
-        String dir = project.getBasePath() + L10N_PATH;
+    private List<InputStream> loadResourceFiles(Project project, String lang) throws IOException {
+        String dir = project.getBasePath() + L10N_PATH + "/" + lang;
         Set<Path> resources = listFilesUsingFileWalk(dir, 10);
         LOG.warn("Resources: " + Arrays.toString(resources.toArray()));
 
